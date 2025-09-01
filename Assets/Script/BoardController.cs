@@ -17,6 +17,10 @@ public class BoardController : MonoBehaviour
     private TileView[] tiles;   // ✅ 이제 빈칸 포함하여 모두 TileView가 존재
     private int emptyIndex = -1;
 
+    private int moveCount = 0;
+    private bool isSolved = false;
+    private bool isShuffling = false;   // ✅ 셔플 중 여부
+
     private void Awake()
     {
         _grid = GetComponent<GridLayoutGroup>();
@@ -88,6 +92,10 @@ public class BoardController : MonoBehaviour
 
     private IEnumerator ShuffleRandomWalk()
     {
+        isShuffling = true;       // ✅ 셔플 시작
+        isSolved = false;         // 초기화(의미상)
+        moveCount = 0;            // 플레이 카운트는 0부터
+
         // ✅ "빈칸과 인접한 실제 타일"만 랜덤 스왑 → 항상 해답 존재
         var neighbors = new List<int>();
         for (int m = 0; m < shuffleMoves; m++)
@@ -99,10 +107,32 @@ public class BoardController : MonoBehaviour
             if (neighbors.Count > 0)
             {
                 int pick = neighbors[Random.Range(0, neighbors.Count)];
-                SwapTiles(pick, emptyIndex);
+                SwapTiles(pick, emptyIndex, countMove: false, doCheck: false); // ⛳ 여기!
             }
             yield return null;
         }
+
+        isShuffling = false;      // ✅ 셔플 종료
+
+        // 셔플 직후 ‘우연히’ 정답일 수 있으니 방지 로직
+        if (IsSolvedNow())
+        {
+            // 간단히 한 번 더 섞기(적은 횟수로)
+            for (int i = 0; i < Mathf.Max(20, rows * cols); i++)
+            {
+                neighbors.Clear();
+                foreach (var nb in GetNeighbors(emptyIndex))
+                    if (!tiles[nb].isEmpty) neighbors.Add(nb);
+                if (neighbors.Count > 0)
+                {
+                    int pick = neighbors[Random.Range(0, neighbors.Count)];
+                    SwapTiles(pick, emptyIndex, countMove: false, doCheck: false);
+                }
+            }
+        }
+
+        moveCount = 0;  // 플레이 시작 전 카운트 리셋
+        isSolved = IsSolvedNow(); // 보통 false여야 정상
     }
 
     private IEnumerable<int> GetNeighbors(int cell)
@@ -117,6 +147,8 @@ public class BoardController : MonoBehaviour
     // ✅ 스와이프 입력: dir = (±1,0) or (0,±1)
     public void TrySwipeMove(TileView tile, Vector2 dir)
     {
+        if (isShuffling) return; // 셔플 중 입력 무시(안전)
+
         int from = tile.currentIndex;
         int target = GetNeighborByDirection(from, dir);
         Debug.Log($"[Board] Swipe from={from} dir={dir} -> target={target}, emptyIndex={emptyIndex}");
@@ -161,7 +193,7 @@ public class BoardController : MonoBehaviour
     }
 
     // ✅ 두 칸 교환(타일↔빈칸 포함)
-    private void SwapTiles(int a, int b)
+    private void SwapTiles(int a, int b, bool countMove = true, bool doCheck = true)
     {
         if (a == b) return;
 
@@ -185,5 +217,45 @@ public class BoardController : MonoBehaviour
         // 빈칸 위치 갱신
         if (A.isEmpty) emptyIndex = b;
         else if (B.isEmpty) emptyIndex = a;
+
+        if (countMove && !isShuffling) moveCount++;      // ✅ 셔플 중엔 카운트 X
+        if (doCheck && !isShuffling) CheckSolved();    // ✅ 셔플 중엔 체크 X
+    }
+
+    private void CheckSolved()
+    {
+        if (isSolved) return;
+
+        // 빈칸을 제외하고, 모든 타일이 제자리인지 확인
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            var t = tiles[i];
+            if (t == null) continue;          // (빈칸을 null로 두신 분이라면 이 라인 사용)
+            if (t.isEmpty) continue;           // (빈칸을 오브젝트로 두신 현재 구조)
+
+            if (t.currentIndex != t.correctIndex)
+            {
+                // 아직 미완성
+                // Debug.Log($"not solved: i={i}, cur={t.currentIndex}, cor={t.correctIndex}");
+                return;
+            }
+        }
+
+        isSolved = true;
+        Debug.Log($"[Board] 🎉 SOLVED!  moves={moveCount}");
+
+        // TODO(후속 단계): 영상 재생/다음 스테이지/클리어 UI 등 연결
+    }
+
+    private bool IsSolvedNow()
+    {
+        for (int i = 0; i < tiles.Length; i++)
+        {
+            var t = tiles[i];
+            if (t == null) continue;
+            if (t.isEmpty) continue;
+            if (t.currentIndex != t.correctIndex) return false;
+        }
+        return true;
     }
 }
