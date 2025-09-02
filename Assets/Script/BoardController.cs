@@ -21,6 +21,8 @@ public class BoardController : MonoBehaviour
     private bool isSolved = false;
     private bool isShuffling = false;   // ✅ 셔플 중 여부
 
+    [SerializeField] private UIHud hud;
+
     private void Awake()
     {
         _grid = GetComponent<GridLayoutGroup>();
@@ -220,6 +222,14 @@ public class BoardController : MonoBehaviour
 
         if (countMove && !isShuffling) moveCount++;      // ✅ 셔플 중엔 카운트 X
         if (doCheck && !isShuffling) CheckSolved();    // ✅ 셔플 중엔 체크 X
+
+        if (countMove && !isShuffling)
+        {
+            moveCount++;
+            if (hud != null) hud.UpdateMoveText(moveCount);  // ✅ HUD 갱신
+        }
+        if (doCheck && !isShuffling) CheckSolved();
+
     }
 
     private void CheckSolved()
