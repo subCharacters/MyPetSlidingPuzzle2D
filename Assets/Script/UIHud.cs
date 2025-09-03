@@ -18,7 +18,7 @@ public class UIHud : MonoBehaviour
     public void UpdateMoveText(int moves)
     {
         if (txtMoves != null)
-            txtMoves.text = $"이동: {moves}";
+            txtMoves.text = $"Move: {moves}";
     }
 
     private void OnExit()

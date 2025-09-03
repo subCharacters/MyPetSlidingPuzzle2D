@@ -220,8 +220,6 @@ public class BoardController : MonoBehaviour
         if (A.isEmpty) emptyIndex = b;
         else if (B.isEmpty) emptyIndex = a;
 
-        if (countMove && !isShuffling) moveCount++;      // ✅ 셔플 중엔 카운트 X
-        if (doCheck && !isShuffling) CheckSolved();    // ✅ 셔플 중엔 체크 X
 
         if (countMove && !isShuffling)
         {
